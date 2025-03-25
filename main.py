@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routes.routes_task import router as task_router
 from routes.routes_user import router as user_router
 from routes.router_auth import router as auth_router
+from routes.statistics_route import router as statistics_router
 import logging
 
 
@@ -26,6 +27,7 @@ logger.info("Registering routes...")
 app.include_router(auth_router)
 app.include_router(task_router)
 app.include_router(user_router)
+app.include_router(statistics_router)
 logger.info("Routes registered successfully")
 
 @app.get("/")
