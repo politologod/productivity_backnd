@@ -13,7 +13,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
-@router.get("/me", response_model=CurrentUser)
+@router.get("/me", response_model=CurrentUser, status_code=status.HTTP_200_OK)
 async def get_current_user_info(current_user: CurrentUser = Depends(get_current_user)):
     return current_user
 
@@ -22,13 +22,18 @@ async def register(user: UserCreate):
     try:
         result = await create_user_service(user)
         return result
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
+        )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
 
-@router.post("/login")
+@router.post("/login", status_code=status.HTTP_200_OK)
 async def login_user(login_data: LoginForm):
     try:
         user = await login(login_data.email, login_data.password)
@@ -43,7 +48,7 @@ async def login_user(login_data: LoginForm):
             "sub": str(user["id"]),
             "email": user["email"],
             "username": user["username"],
-            "role": user.get("role", "user"),  # Si no tiene rol, por defecto es "user"
+            "role": user.get("role", "user"),
             "is_active": user.get("is_active", True)
         }
         
@@ -62,9 +67,11 @@ async def login_user(login_data: LoginForm):
                 "is_active": user.get("is_active", True)
             }
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
 

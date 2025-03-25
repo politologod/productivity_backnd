@@ -36,6 +36,16 @@ async def get_users():
 
 async def create_user(user: UserCreate):
     try:
+        # Verificar si el email ya existe
+        existing_user = await collection_users.find_one({"email": user.email})
+        if existing_user:
+            raise ValueError("El email ya está registrado")
+
+        # Verificar si el username ya existe
+        existing_username = await collection_users.find_one({"username": user.username})
+        if existing_username:
+            raise ValueError("El nombre de usuario ya está en uso")
+
         # Crear el documento del usuario con id y fechas automáticas
         user_dict = user.model_dump()
         user_dict["id"] = await get_next_id()
@@ -56,6 +66,9 @@ async def create_user(user: UserCreate):
             logger.info(f"User created successfully with id: {created_user['id']}")
             return {"user": serialize_doc(created_user), "message": "User created successfully"}
         return {"message": "Failed to create user"}
+    except ValueError as e:
+        logger.error(f"Validation error creating user: {str(e)}")
+        raise
     except Exception as e:
         logger.error(f"Error creating user: {str(e)}")
         raise
@@ -75,6 +88,23 @@ async def get_user(user_id: int):
 
 async def update_user(user_id: int, user: UserCreate):
     try:
+        # Verificar si el usuario existe
+        existing_user = await collection_users.find_one({"id": user_id})
+        if not existing_user:
+            raise ValueError("Usuario no encontrado")
+
+        # Verificar si el nuevo email ya existe (excluyendo el usuario actual)
+        if user.email != existing_user["email"]:
+            email_exists = await collection_users.find_one({"email": user.email})
+            if email_exists:
+                raise ValueError("El email ya está registrado")
+
+        # Verificar si el nuevo username ya existe (excluyendo el usuario actual)
+        if user.username != existing_user["username"]:
+            username_exists = await collection_users.find_one({"username": user.username})
+            if username_exists:
+                raise ValueError("El nombre de usuario ya está en uso")
+
         user_dict = user.model_dump()
         user_dict["updated_at"] = datetime.now()
         
@@ -90,12 +120,20 @@ async def update_user(user_id: int, user: UserCreate):
             return {"user": serialize_doc(user), "message": "User updated successfully"}
         logger.info(f"User with id {user_id} not found for update")
         return {"message": "Failed to update user"}
+    except ValueError as e:
+        logger.error(f"Validation error updating user: {str(e)}")
+        raise
     except Exception as e:
         logger.error(f"Error updating user: {str(e)}")
         raise
 
 async def delete_user(user_id: int):
     try:
+        # Verificar si el usuario existe
+        existing_user = await collection_users.find_one({"id": user_id})
+        if not existing_user:
+            raise ValueError("Usuario no encontrado")
+
         logger.info(f"Deleting user with id: {user_id}")
         deleted_user = await collection_users.delete_one({"id": user_id})
         if deleted_user.deleted_count:
@@ -103,6 +141,9 @@ async def delete_user(user_id: int):
             return {"message": "User deleted successfully"}
         logger.info(f"User with id {user_id} not found for deletion")
         return {"message": "User not found"}
+    except ValueError as e:
+        logger.error(f"Validation error deleting user: {str(e)}")
+        raise
     except Exception as e:
         logger.error(f"Error deleting user: {str(e)}")
         raise
