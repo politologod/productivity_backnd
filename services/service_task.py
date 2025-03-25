@@ -1,5 +1,5 @@
 from database.database import collection_tasks
-from models.model_task import Task, TaskCreate
+from models.model_task import TaskCreate
 from datetime import datetime
 from bson import ObjectId
 
