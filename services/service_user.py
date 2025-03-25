@@ -3,6 +3,7 @@ from models.model_user import UserCreate
 from datetime import datetime
 from bson import ObjectId
 import logging
+from services.service_auth import get_password_hash
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -38,6 +39,11 @@ async def create_user(user: UserCreate):
         # Crear el documento del usuario con id y fechas automáticas
         user_dict = user.model_dump()
         user_dict["id"] = await get_next_id()
+        
+        # Hashear la contraseña antes de guardarla
+        hashed_password = get_password_hash(user_dict["password"])
+        user_dict["password"] = hashed_password
+        
         current_time = datetime.now()
         user_dict["created_at"] = current_time
         user_dict["updated_at"] = current_time
