@@ -1,51 +1,60 @@
 from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
+from database.database import get_database
 from models.model_user import User
 from models.model_task import Task
 from models.model_statistics import UserStatistics
+from bson import ObjectId
 
 class StatisticsService:
     @staticmethod
-    def calculate_user_statistics(db: Session, user_id: int) -> UserStatistics:
+    async def calculate_user_statistics(user_id: str) -> UserStatistics:
+        db = await get_database()
+        
         # Obtener todas las tareas del usuario
-        tasks = db.query(Task).filter(Task.user_id == user_id).all()
+        tasks = await db.tasks.find({"user_id": ObjectId(user_id)}).to_list(None)
         
         # Calcular estadísticas básicas
         total_tasks = len(tasks)
-        completed_tasks = len([t for t in tasks if t.status == "completada"])
+        completed_tasks = len([t for t in tasks if t["status"] == "completada"])
         pending_tasks = total_tasks - completed_tasks
         
         # Calcular tiempo promedio de completado
-        completed_tasks_with_time = [t for t in tasks if t.status == "completada" and t.completed_at and t.created_at]
+        completed_tasks_with_time = [
+            t for t in tasks 
+            if t["status"] == "completada" and t.get("completed_at") and t.get("created_at")
+        ]
         if completed_tasks_with_time:
-            total_time = sum((t.completed_at - t.created_at).total_seconds() for t in completed_tasks_with_time)
+            total_time = sum(
+                (t["completed_at"] - t["created_at"]).total_seconds() 
+                for t in completed_tasks_with_time
+            )
             average_completion_time = total_time / len(completed_tasks_with_time) / 3600  # convertir a horas
         else:
             average_completion_time = 0.0
         
         # Calcular tareas por prioridad
         tasks_by_priority = {
-            "alta": len([t for t in tasks if t.priority == "alta"]),
-            "media": len([t for t in tasks if t.priority == "media"]),
-            "baja": len([t for t in tasks if t.priority == "baja"])
+            "alta": len([t for t in tasks if t["priority"] == "alta"]),
+            "media": len([t for t in tasks if t["priority"] == "media"]),
+            "baja": len([t for t in tasks if t["priority"] == "baja"])
         }
         
         # Calcular tareas por estado
         tasks_by_status = {
-            "completada": len([t for t in tasks if t.status == "completada"]),
-            "en_progreso": len([t for t in tasks if t.status == "en_progreso"]),
-            "pendiente": len([t for t in tasks if t.status == "pendiente"])
+            "completada": len([t for t in tasks if t["status"] == "completada"]),
+            "en_progreso": len([t for t in tasks if t["status"] == "en_progreso"]),
+            "pendiente": len([t for t in tasks if t["status"] == "pendiente"])
         }
         
         # Calcular última actividad
-        last_activity = max((t.updated_at for t in tasks), default=datetime.now())
+        last_activity = max((t["updated_at"] for t in tasks), default=datetime.now())
         
         # Calcular racha de días
         today = datetime.now().date()
         streak_days = 0
         current_date = today
         while True:
-            has_activity = any(t.updated_at.date() == current_date for t in tasks)
+            has_activity = any(t["updated_at"].date() == current_date for t in tasks)
             if not has_activity:
                 break
             streak_days += 1
