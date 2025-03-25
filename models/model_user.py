@@ -7,7 +7,7 @@ class UserCreate(BaseModel):
     username: str
     email: str
     phone: str
-    password: str
+    password: str                                                                       
 
 class Role(str, Enum):
     admin = "admin"

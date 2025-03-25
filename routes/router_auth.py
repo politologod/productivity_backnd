@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer
-from services.service_auth import login, validate_token, create_access_token
+from services.service_auth import login, validate_token, create_access_token, get_current_user
 from models.model_user import UserCreate
-from models.model_auth import LoginForm
+from models.model_auth import LoginForm, CurrentUser
 from services.service_user import create_user as create_user_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -12,6 +12,10 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+@router.get("/me", response_model=CurrentUser)
+async def get_current_user_info(current_user: CurrentUser = Depends(get_current_user)):
+    return current_user
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(user: UserCreate):
