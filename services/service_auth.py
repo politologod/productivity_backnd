@@ -40,10 +40,22 @@ def create_access_token(data: dict, expires_delta: int = None):
 
 async def login(email: str, password: str):
     try:
-        # Usamos el username como email ya que OAuth2PasswordRequestForm usa username
         user = await collection_users.find_one({"email": email})
         if not user:
             return None
+            
+        # Si la contraseña no está hasheada, la comparamos directamente
+        if not user["password"].startswith("$2b$"):
+            if user["password"] == password:
+                # Si coincide, actualizamos la contraseña con hash
+                hashed_password = get_password_hash(password)
+                await collection_users.update_one(
+                    {"_id": user["_id"]},
+                    {"$set": {"password": hashed_password}}
+                )
+                return user
+            return None
+            
         if not verify_password(password, user["password"]):
             return None
         return user

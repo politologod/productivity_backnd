@@ -55,19 +55,24 @@ async def create_user(user: UserCreate, current_user: CurrentUser = Depends(get_
         )
 
 @router.get("/{user_id}", status_code=status.HTTP_200_OK)
-async def get_user(user_id: int, current_user: CurrentUser = Depends(get_current_user)):
+async def get_user(
+    user_id: int,
+    include_tasks: bool = False,
+    current_user: CurrentUser = Depends(get_current_user)
+):
     try:
-        # Los usuarios solo pueden ver su propio perfil, los admin pueden ver todos
+        # Solo permitir que los usuarios vean sus propios datos o que los admins vean todos
         if current_user.role != "admin" and current_user.id != user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not enough permissions"
+                detail="No tienes permiso para ver este usuario"
             )
-        user = await get_user_service(user_id)
-        if "message" in user:
+            
+        user = await get_user_service(user_id, include_tasks)
+        if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=user["message"]
+                detail="Usuario no encontrado"
             )
         return user
     except HTTPException:

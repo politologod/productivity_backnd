@@ -1,4 +1,4 @@
-from database.database import collection_users
+from database.database import collection_users, collection_tasks
 from models.model_user import UserCreate
 from datetime import datetime
 from bson import ObjectId
@@ -73,15 +73,25 @@ async def create_user(user: UserCreate):
         logger.error(f"Error creating user: {str(e)}")
         raise
 
-async def get_user(user_id: int):
+async def get_user(user_id: int, include_tasks: bool = False):
     try:
         logger.info(f"Fetching user with id: {user_id}")
         user = await collection_users.find_one({"id": user_id})
-        if user:
-            logger.info(f"User found: {user['username']}")
-            return serialize_doc(user)
-        logger.info(f"User with id {user_id} not found")
-        return {"message": "User not found"}
+        if not user:
+            logger.info(f"User with id {user_id} not found")
+            return None
+            
+        if include_tasks:
+            # Obtener las tareas del usuario
+            tasks = await collection_tasks.find({
+                "$or": [
+                    {"assigned_to": user_id},
+                    {"created_by": user_id}
+                ]
+            }).to_list(length=100)
+            user["tasks"] = [serialize_doc(task) for task in tasks]
+            
+        return serialize_doc(user)
     except Exception as e:
         logger.error(f"Error fetching user: {str(e)}")
         raise

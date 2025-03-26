@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field
 from enum import Enum
 from datetime import datetime
 from typing import Optional, List
@@ -15,13 +15,17 @@ class Status(str, Enum):
     completed = "completed"
 
 
-class TaskCreate(BaseModel):
-    title: str
-    description: str
-    priority: Priority
-    assigned_to: List[int]  # Lista de IDs de usuarios
-    due_date: datetime
-    status: Status = Status.pending
+class TaskBase(BaseModel):
+    title: str = Field(..., description="Título de la tarea")
+    description: Optional[str] = Field(None, description="Descripción de la tarea")
+    due_date: Optional[datetime] = Field(None, description="Fecha de vencimiento de la tarea")
+    priority: Optional[str] = Field(None, description="Prioridad de la tarea")
+    status: Optional[str] = Field(None, description="Estado de la tarea")
+    column_id: Optional[int] = Field(None, description="ID de la columna del Kanban donde se encuentra la tarea")
+
+
+class TaskCreate(TaskBase):
+    assigned_to: Optional[int] = Field(None, description="ID del usuario asignado a la tarea")
 
     @field_validator('title')
     @classmethod
@@ -58,13 +62,29 @@ class TaskCreate(BaseModel):
         return v
 
 
-class Task(TaskCreate):
-    id: Optional[int] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    created_by: Optional[int] = None  # ID del usuario que creó la tarea
+class Task(TaskBase):
+    id: int = Field(..., description="ID único de la tarea")
+    created_by: int = Field(..., description="ID del usuario que creó la tarea")
+    assigned_to: Optional[int] = Field(None, description="ID del usuario asignado a la tarea")
+    created_at: datetime = Field(..., description="Fecha de creación de la tarea")
+    updated_at: datetime = Field(..., description="Fecha de última actualización de la tarea")
 
     class Config:
         from_attributes = True
+        json_schema_extra = {
+            "example": {
+                "id": 1,
+                "title": "Completar informe",
+                "description": "Finalizar el informe mensual de ventas",
+                "due_date": "2024-03-31T23:59:59",
+                "priority": "alta",
+                "status": "en_progreso",
+                "column_id": 2,
+                "created_by": 1,
+                "assigned_to": 2,
+                "created_at": "2024-03-15T10:00:00",
+                "updated_at": "2024-03-15T10:00:00"
+            }
+        }
 
 

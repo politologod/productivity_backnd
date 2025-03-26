@@ -1,23 +1,31 @@
 from motor.motor_asyncio import AsyncIOMotorClient
+from dotenv import load_dotenv
+import os
 import logging
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+load_dotenv()
+
+MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
+DATABASE_NAME = os.getenv("DATABASE_NAME", "seekanban")
+
 try:
     # Conexión a MongoDB
-    client = AsyncIOMotorClient("mongodb://hbdev62:c4YjKtK0gi3s8DNM@cluster0-shard-00-00.myx2l.mongodb.net:27017,cluster0-shard-00-01.myx2l.mongodb.net:27017,cluster0-shard-00-02.myx2l.mongodb.net:27017/?replicaSet=atlas-13dhjj-shard-0&ssl=true&authSource=admin&retryWrites=true&w=majority&appName=Cluster0")
+    client = AsyncIOMotorClient(MONGODB_URL)
     logger.info("Connected to MongoDB successfully")
     
     # Obtener la base de datos
-    database = client.FARM_DB
-    logger.info("Database selected: FARM_DB")
+    database = client[DATABASE_NAME]
+    logger.info("Database selected: " + DATABASE_NAME)
     
     # Obtener las colecciones
     collection_tasks = database.tasks
     collection_users = database.users
-    collection_admin = database.admin
+    collection_statistics = database.statistics
+    collection_kanban_columns = database.kanban_columns
     
     logger.info("Collections initialized successfully")
 except Exception as e:
