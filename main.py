@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes import routes_auth, routes_user, routes_task, routes_kanban
 from routes.statistics_route import router as statistics_router
-from scripts.init_kanban import init_kanban_columns
+from scripts.init_database import init_database
 import logging
 
 
@@ -42,8 +42,8 @@ async def root():
 async def startup_event():
     """Evento que se ejecuta al iniciar la aplicación"""
     try:
-        # Inicializar columnas del Kanban
-        await init_kanban_columns()
+        # Inicializar la base de datos
+        await init_database()
         logger.info("Aplicación iniciada exitosamente")
     except Exception as e:
         logger.error(f"Error al iniciar la aplicación: {str(e)}")

@@ -1,11 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends, status
-from fastapi.security import OAuth2PasswordRequestForm
+from models.model_auth import LoginForm, CurrentUser
 from services.service_auth import (
     login as login_service,
     get_current_user,
     create_access_token
 )
-from models.model_auth import LoginForm, CurrentUser
 import logging
 
 # Configurar logging
@@ -48,9 +47,9 @@ router = APIRouter(
         }
     }
 )
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+async def login(login_data: LoginForm):
     try:
-        user = await login_service(form_data.username, form_data.password)
+        user = await login_service(login_data.email, login_data.password)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

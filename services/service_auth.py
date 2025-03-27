@@ -48,20 +48,22 @@ async def login(email: str, password: str):
         if not user["password"].startswith("$2b$"):
             if user["password"] == password:
                 # Si coincide, actualizamos la contraseña con hash
-                hashed_password = get_password_hash(password)
+                user["password"] = get_password_hash(password)
                 await collection_users.update_one(
                     {"_id": user["_id"]},
-                    {"$set": {"password": hashed_password}}
+                    {"$set": {"password": user["password"]}}
                 )
                 return user
             return None
             
+        # Si la contraseña está hasheada, verificamos con el hash
         if not verify_password(password, user["password"]):
             return None
+            
         return user
     except Exception as e:
-        logger.error(f"Error during login: {str(e)}")
-        raise
+        logger.error(f"Error en login: {str(e)}")
+        return None
 
 async def validate_token(token: str):
     try:
@@ -76,7 +78,7 @@ async def validate_token(token: str):
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> CurrentUser:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="No se pudieron validar las credenciales",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
@@ -84,16 +86,18 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Cur
         user_id: str = payload.get("sub")
         if user_id is None:
             raise credentials_exception
-        
-        # Crear el objeto CurrentUser con la información del token
-        current_user = CurrentUser(
-            id=int(user_id),
-            email=payload.get("email"),
-            username=payload.get("username"),
-            role=payload.get("role", "user"),
-            is_active=payload.get("is_active", True)
-        )
-        
-        return current_user
     except JWTError:
         raise credentials_exception
+        
+    user = await collection_users.find_one({"id": int(user_id)})
+    if user is None:
+        raise credentials_exception
+        
+    current_user = CurrentUser(
+        id=int(user_id),
+        email=user["email"],
+        username=user["username"],
+        role=user["role"],
+        is_active=user.get("is_active", True)
+    )
+    return current_user
